@@ -33,7 +33,7 @@ var page = require('webpage').create(),
     address, output, size;
 
 if (system.args.length < 3 || system.args.length > 20) {
-    console.log('Usage: ' + system.args[0] + ' URL filename [paperwidth*paperheight|paperformat] [zoom]');
+    console.log('Usage: ' + system.args[0] + ' URL outputfile [paperwidth*paperheight|paperformat] [zoom]');
     // console.log("  You may wish to use 's around the URL to avoid characters being misinterpreted.");
     console.log('  paper (pdf output) examples: "5in*7.5in", "10cm*20cm", "A4", "Letter"');
     console.log("Args length is: " + system.args.length);
@@ -43,27 +43,19 @@ if (system.args.length < 3 || system.args.length > 20) {
 }
 address = system.args[1];
 output = system.args[2];
-
-//@jonathan - originally w:600
+// TODO parse the args for options
+var paperformat = system.args.length >3? system.args[3] : false;
+var zoom = system.args.length >4? parseFloat(system.args[4]) : false;
 //viewport size determines rendering
 //A4 pixel height size = 1123
 //1cm = 37.79px (38)    
 page.viewportSize = {
     //if you wish to avoid clipping on chart text then leave this (better implementation required)
     width: 1024, // this is to make bootstrap render as medium and a decen res
-    height: 1123 // needed for page break calculations
+    height: 1123
 };
 
-if (system.args.length > 3 && system.args[2].substr(-4) === ".pdf") {
-    size = system.args[3].split('*');
-    //in this case A4 is normally selected
-    page.paperSize = size.length === 2 ? {
-        width: size[0],
-        height: size[1],
-        margin: '0px',
-        quality: '100'
-    } : {
-        // format: system.args[3],
+page.paperSize = {
         format: 'A4',
         orientation: 'portrait',
         margin: {
@@ -71,33 +63,33 @@ if (system.args.length > 3 && system.args[2].substr(-4) === ".pdf") {
             left: '1cm',
             right: '1cm',
             bottom: '1cm'
-            // bottom: '0.3cm'
         },
         quality: '100'
-        // footer: {
-        //     height: "0.5cm",
-        //     contents: phantom.callback(function(pageNum, numPages) {
-        //         return "<p style='font-size: 12px; color: #999;'><small>Brought to you by SoDash <span style='float:right'>" + pageNum + " / " + numPages + "</span></small></p>";
-        //     })
-        // }
     };
-    // Add a footer?
-    //if (system.args.length > 5) {
-    //    page.paperSize.footer = {
-    //        height: "0.5cm",
-    //            contents: phantom.callback(function(pageNum, numPages) {
-    //            return "<p style='font-size: 12px; color: #999;'><small>"+system.args[5]+" <span style='float:right'>" + pageNum + " / " + numPages + "</span></small></p>";
-    //        })
-    //    };
-    //}
+// override the A4 default?
+if (paperformat) {
+    var size = paperformat.split('*');
+    //in this case A4 is normally selected
+    if (size.length === 2) {
+        page.paperSize = {
+            width: size[0],
+            height: size[1],
+            margin: '0px',
+            quality: '100'
+        };
+    } else {
+
+    }
+    if (verbose) console.log("Set paper-format to "+paperformat+" = "+page.paperSize);
 }
 
-if (system.args.length > 4 && parseFloat(system.args[4])>0) {
-    page.zoomFactor = system.args[4];
+if (zoom && zoom>0) {
+    if (verbose) console.log("Set zoom to "+zoom);
+    page.zoomFactor = zoom;    
 }
 
 function render_page() {
-    console.log("Evaluating page");
+    if (verbose) console.log("Evaluating page");
     page.onConsoleMessage = function(msg) {
         console.log(msg);
     };
@@ -115,12 +107,12 @@ page.open(address, function(status) {
     } else {
         console.log('Page '+address+' loaded. Rendering...');
         // Wait a bit to let animations run
-        window.setTimeout(render_page, 4000);
+        window.setTimeout(render_page, 2000);
     }
 });
 
 // HACK: If all else fails generate something and exit cleanly...
-// FIXME: Not convinced this is the correct behaviour. Pro: robust in face of some errors; Con: Caller (Java) doesn't know things have gone awry
+// ??Not convinced this is the correct behaviour. Pro: robust in face of some errors; Con: Caller (Java) doesn't know things have gone awry
 window.setTimeout(function() {
     console.log('Timed out!');
     render_page();
